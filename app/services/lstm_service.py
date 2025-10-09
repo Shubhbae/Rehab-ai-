@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple
 import os
 import numpy as np
 import tensorflow as tf
@@ -21,9 +21,54 @@ def _poses_to_array(poses: List[List[Dict]]) -> np.ndarray:
 
 class LSTMClassifier:
 	def __init__(self):
-		if not os.path.exists(settings.lstm_model_path):
-			raise FileNotFoundError(f"LSTM model not found at {settings.lstm_model_path}")
-		self.model = tf.keras.models.load_model(settings.lstm_model_path)
+		# Prefer a .keras model if present in the models directory; otherwise fall back to configured path
+		models_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", settings.models_dir))
+		keras_candidates = [
+			os.path.join(models_dir, "weights.best.keras"),
+			os.path.join(models_dir, "lstm_model.keras"),
+		]
+		print("[LSTM] 🔍 Searching for model file...")
+		print(f"[LSTM] 📁 Models directory: {models_dir}")
+		for c in keras_candidates:
+			exists = os.path.isfile(c)
+			size_info = f", size={os.path.getsize(c)} bytes" if exists else ""
+			print(f"[LSTM] ▶ Candidate: {c} | exists={exists}{size_info}")
+
+		model_path = None
+		for candidate in keras_candidates:
+			if os.path.isfile(candidate):
+				model_path = candidate
+				break
+		if model_path is None:
+			# Fall back to the configured path (may be .h5 or .keras)
+			model_path = settings.lstm_model_path
+		print(f"[LSTM] 🧭 Selected model path: {model_path}")
+
+		if not os.path.isfile(model_path):
+			print(f"[LSTM] ❌ Model file NOT found at: {model_path}")
+			print(f"[LSTM] ❌ CWD: {os.getcwd()}")
+			models_dir_exists = os.path.isdir(models_dir)
+			print(f"[LSTM] ❌ models_dir exists: {models_dir_exists}")
+			try:
+				listing = os.listdir(models_dir) if models_dir_exists else []
+				print(f"[LSTM] ❌ Files in models_dir: {listing}")
+			except Exception as e:
+				print(f"[LSTM] ❌ Could not list models_dir: {e}")
+			# Still attempt load to raise informative error
+		
+		try:
+			print("[LSTM] ⏳ Loading model...")
+			self.model = tf.keras.models.load_model(model_path)
+			print("[LSTM] ✅ Model loaded successfully!")
+			try:
+				print(f"[LSTM] ✅ Input shape: {getattr(self.model, 'input_shape', 'unknown')}")
+				print(f"[LSTM] ✅ Output shape: {getattr(self.model, 'output_shape', 'unknown')}")
+				print(f"[LSTM] ✅ Layers: {len(getattr(self.model, 'layers', []))}")
+			except Exception:
+				pass
+		except Exception as e:
+			print(f"[LSTM] ❌ Error loading model: {e}")
+			raise
 
 	def predict_sequence(self, poses: List[List[Dict]]):
 		arr = _poses_to_array(poses)

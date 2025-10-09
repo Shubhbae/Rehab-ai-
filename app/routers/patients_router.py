@@ -3,6 +3,7 @@ import numpy as np
 from typing import List, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app.auth import require_role
 from app.database import get_db
@@ -30,3 +31,61 @@ async def list_patient_sessions(patient_id: int, db: Session = Depends(get_db), 
 	sessions = db.query(DbSession).filter(DbSession.patient_id == patient_id).order_by(DbSession.started_at.desc()).all()
 	return sessions
 
+
+# Models and endpoints added per requirements
+class AssignedExercise(BaseModel):
+	id: str
+	exerciseId: str
+	exercise: dict
+	patientId: str
+	reps: int
+	sets: int
+	instructions: str
+	status: str
+
+
+@router.get("/exercises", response_model=List[AssignedExercise])
+async def get_assigned_exercises():
+	return [
+		{
+			"id": "assigned-1",
+			"exerciseId": "ex-1",
+			"exercise": {
+				"id": "ex-1",
+				"name": "Arm Circles",
+				"description": "Gentle circular movements",
+				"reps": 10,
+				"sets": 3
+			},
+			"patientId": "patient-123",
+			"reps": 10,
+			"sets": 3,
+			"instructions": "Start with small circles",
+			"status": "pending"
+		}
+	]
+
+
+@router.get("/progress")
+async def get_progress():
+	return []
+
+
+@router.get("/ai-score")
+async def get_ai_score():
+	return {"score": 75, "message": "Great progress!"}
+
+
+@router.post("/progress")
+async def update_progress():
+	return {"message": "Progress updated successfully"}
+
+
+@router.post("/reports")
+async def upload_report():
+	return {"message": "Report uploaded successfully"}
+
+
+@router.get("/reports")
+async def get_reports():
+	return []

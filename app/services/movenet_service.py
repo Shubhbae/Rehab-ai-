@@ -1,7 +1,10 @@
 import os
 import numpy as np
 import tensorflow as tf
-import tensorflow_hub as hub
+try:
+	import tensorflow_hub as hub  # type: ignore[reportMissingImports]
+except Exception:
+	hub = None  # Fallback for environments without tensorflow_hub
 import cv2
 from typing import List, Dict, Tuple, Optional
 
@@ -10,6 +13,10 @@ from app.config import settings
 
 class MoveNetService:
 	def __init__(self):
+		if hub is None:
+			raise ImportError(
+				"tensorflow_hub is not installed or not resolvable. Install with 'pip install tensorflow-hub'."
+			)
 		self.model = hub.load(settings.movenet_model_handle)
 
 	def _resize_and_pad(self, image: np.ndarray, target_size: Tuple[int, int] = (256, 256)) -> np.ndarray:

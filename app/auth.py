@@ -66,7 +66,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 		raise credentials_exception
 
 
-async def require_role(required: UserRole):
+def require_role(required: UserRole):
 	async def dependency(user: User = Depends(get_current_user)) -> User:
 		if user.role != required:
 			raise HTTPException(status_code=403, detail="Insufficient permissions")
