@@ -52,15 +52,79 @@ async def get_assigned_exercises():
 			"exerciseId": "ex-1",
 			"exercise": {
 				"id": "ex-1",
-				"name": "Arm Circles",
-				"description": "Gentle circular movements",
-				"reps": 10,
+				"name": "Mountain Pose",
+				"description": "Stand tall with feet together, arms at sides",
+				"reps": 5,
 				"sets": 3
 			},
 			"patientId": "patient-123",
-			"reps": 10,
+			"reps": 5,
 			"sets": 3,
-			"instructions": "Start with small circles",
+			"instructions": "Hold for 30 seconds, focus on breathing",
+			"status": "pending"
+		},
+		{
+			"id": "assigned-2",
+			"exerciseId": "ex-2",
+			"exercise": {
+				"id": "ex-2",
+				"name": "Warrior 1",
+				"description": "Lunge position with arms raised overhead",
+				"reps": 3,
+				"sets": 2
+			},
+			"patientId": "patient-123",
+			"reps": 3,
+			"sets": 2,
+			"instructions": "Hold each side for 20 seconds",
+			"status": "pending"
+		},
+		{
+			"id": "assigned-3",
+			"exerciseId": "ex-3",
+			"exercise": {
+				"id": "ex-3",
+				"name": "Warrior 2",
+				"description": "Side lunge with arms extended horizontally",
+				"reps": 3,
+				"sets": 2
+			},
+			"patientId": "patient-123",
+			"reps": 3,
+			"sets": 2,
+			"instructions": "Hold each side for 20 seconds",
+			"status": "pending"
+		},
+		{
+			"id": "assigned-4",
+			"exerciseId": "ex-4",
+			"exercise": {
+				"id": "ex-4",
+				"name": "Tree Pose",
+				"description": "Balance on one leg with foot on inner thigh",
+				"reps": 2,
+				"sets": 2
+			},
+			"patientId": "patient-123",
+			"reps": 2,
+			"sets": 2,
+			"instructions": "Hold each side for 15 seconds",
+			"status": "pending"
+		},
+		{
+			"id": "assigned-5",
+			"exerciseId": "ex-5",
+			"exercise": {
+				"id": "ex-5",
+				"name": "Downward Dog",
+				"description": "Inverted V-shape pose",
+				"reps": 3,
+				"sets": 2
+			},
+			"patientId": "patient-123",
+			"reps": 3,
+			"sets": 2,
+			"instructions": "Hold for 10 seconds each time",
 			"status": "pending"
 		}
 	]

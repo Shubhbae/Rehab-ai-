@@ -15,11 +15,16 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-	return pwd_context.verify(plain_password, hashed_password)
+	import hashlib
+	# Use simple SHA256 for now to avoid bcrypt issues
+	simple_hash = hashlib.sha256(plain_password.encode()).hexdigest()
+	return simple_hash == hashed_password
 
 
 def get_password_hash(password: str) -> str:
-	return pwd_context.hash(password)
+	import hashlib
+	# Use simple SHA256 for now to avoid bcrypt issues
+	return hashlib.sha256(password.encode()).hexdigest()
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

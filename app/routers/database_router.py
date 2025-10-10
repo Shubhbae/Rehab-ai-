@@ -1,5 +1,5 @@
-from fastapi import APIRouter
-
+from fastapi import APIRouter, Depends
+from app.services.database_service import get_database_service, DatabaseService
 # Define the router at module scope so imports never fail due to optional deps
 router = APIRouter()
 
@@ -26,3 +26,17 @@ def database_health():
 @router.get("/database/ping")
 def database_ping():
     return {"status": "ok"}
+
+
+@router.post("/database/create-test-users")
+def create_test_users(svc: DatabaseService = Depends(get_database_service)):
+    """Create test users for development"""
+    try:
+        users = svc.create_test_users()
+        return {
+            "success": True,
+            "message": f"Created {len(users)} test users",
+            "users": users
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}

@@ -1,0 +1,5 @@
+email,full_name,role,hashed_password,plain_text_password
+shubh.gautam@example.com,Shubh Gautam,patient,$2a$10$F5v1c1GqX6JqCvK8uWzr8e6X1v3J4Y5Z6X7Y8Z9a0b1c2d3e4f5g6h7i,password123
+tushar.patel@example.com,Tushar Patel,patient,$2a$10$H8j9K0L1M2N3O4P5Q6R7S8T9U0V1W2X3Y4Z5a6b7c8d9e0f1g2h3i4j5,password456
+abhay.singh@example.com,Abhay Singh,patient,$2a$10$J6k7L8M9N0O1P2Q3R4S5T6U7V8W9X0Y1Z2a3b4c5d6e7f8g9h0i1j2k3,password789
+rijul.mehra@example.com,Rijul Mehra,patient,$2a$10$L4m5N6O7P8Q9R0S1T2U3V4W5X6Y7Z8a9b0c1d2e3f4g5h6i7j8k9l0m1,password101

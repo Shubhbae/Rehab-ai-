@@ -15,17 +15,19 @@ class TokenData(BaseModel):
 
 
 class UserBase(BaseModel):
-	email: EmailStr
-	full_name: str
-	role: UserRole = UserRole.patient
+    email: EmailStr
+    role: UserRole = UserRole.patient
 
 
 class UserCreate(UserBase):
-	password: str = Field(min_length=6)
+    first_name: str = Field(min_length=1)
+    last_name: str = Field(min_length=1)
+    password: str = Field(min_length=6)
 
 
 class UserRead(UserBase):
 	id: int
+	full_name: str
 	created_at: datetime
 
 	class Config:

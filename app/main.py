@@ -32,8 +32,8 @@ app.add_middleware(
 )
 
 # Include your routers with proper API prefixes
-app.include_router(auth_router.router, prefix="/api/auth", tags=["authentication"])
-app.include_router(patients_router.router, prefix="/api/patients", tags=["patients"])
+app.include_router(auth_router.router, prefix="/api", tags=["authentication"])
+app.include_router(patients_router.router, prefix="/api", tags=["patients"])
 app.include_router(classification_router.router)
 app.include_router(realtime_router.router)
 app.include_router(database_router.router, prefix="/api", tags=["database"])

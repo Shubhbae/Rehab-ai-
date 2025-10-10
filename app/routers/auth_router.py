@@ -2,17 +2,18 @@ from datetime import timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.auth import authenticate_user, create_access_token, get_password_hash
+from app.auth import authenticate_user, create_access_token, get_password_hash, verify_password
 from app.config import settings
 from app.database import get_db
 from app.models import User, UserRole
 from app.schemas import UserCreate, UserRead, Token
 
 router = APIRouter(prefix="/auth", tags=["auth"]) 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 @router.post("/signup", response_model=UserRead)
@@ -20,9 +21,11 @@ def signup(user_in: UserCreate, db: Session = Depends(get_db)):
 	exists = db.query(User).filter(User.email == user_in.email).first()
 	if exists:
 		raise HTTPException(status_code=400, detail="Email already registered")
+	
+	full_name = f"{user_in.first_name} {user_in.last_name}"
 	user = User(
 		email=user_in.email,
-		full_name=user_in.full_name,
+		full_name=full_name,
 		role=user_in.role,
 		hashed_password=get_password_hash(user_in.password),
 	)
@@ -72,6 +75,24 @@ async def logout():
 
 
 @router.get("/me")
-async def get_current_user():
-	return {"id": "user-123", "email": "test@example.com", "role": "patient"}
+async def get_current_user_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+	try:
+		from jose import jwt
+		payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+		email: str = payload.get("sub")
+		if not email:
+			raise HTTPException(status_code=401, detail="Invalid token")
+		
+		user = db.query(User).filter(User.email == email).first()
+		if not user:
+			raise HTTPException(status_code=404, detail="User not found")
+		
+		return {
+			"id": user.id,
+			"email": user.email,
+			"role": user.role.value,
+			"full_name": user.full_name
+		}
+	except Exception as e:
+		raise HTTPException(status_code=401, detail="Could not validate credentials")
 
