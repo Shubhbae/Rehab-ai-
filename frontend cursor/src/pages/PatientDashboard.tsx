@@ -195,74 +195,34 @@ const PatientDashboard: React.FC = () => {
 		}
 	};
 
-	if (loading) return (
-		<div style={{ 
-			display: 'flex', 
-			justifyContent: 'center', 
-			alignItems: 'center', 
-			height: '100vh',
-			fontSize: '18px'
-		}}>
-			Loading your dashboard...
-		</div>
-	);
+    if (loading) return (
+        <div className="container" style={{ padding: '48px 0', textAlign: 'center' }}>
+            <div className="card">Loading your dashboard…</div>
+        </div>
+    );
 
-	if (error) return (
-		<div style={{ 
-			padding: 24, 
-			color: 'red', 
-			textAlign: 'center',
-			fontSize: '18px'
-		}}>
-			Error: {error}
-		</div>
-	);
+    if (error) return (
+        <div className="container" style={{ padding: '48px 0' }}>
+            <div className="card" style={{ borderLeft: '6px solid var(--red)' }}>Error: {error}</div>
+        </div>
+    );
 
 	return (
-		<div style={{ 
-			minHeight: '100vh', 
-			backgroundColor: '#f5f5f5',
-			fontFamily: 'Arial, sans-serif'
-		}}>
-			{/* Header */}
-			<header style={{
-				backgroundColor: '#2c3e50',
-				color: 'white',
-				padding: '20px',
-				display: 'flex',
-				justifyContent: 'space-between',
-				alignItems: 'center'
-			}}>
-				<div>
-					<h1 style={{ margin: 0, fontSize: '24px' }}>Patient Dashboard</h1>
-					<p style={{ margin: '5px 0 0 0', opacity: 0.8 }}>Welcome, {user?.full_name || user?.email}</p>
-				</div>
-				<button 
-					onClick={logout}
-					style={{
-						backgroundColor: '#e74c3c',
-						color: 'white',
-						border: 'none',
-						padding: '10px 20px',
-						borderRadius: '5px',
-						cursor: 'pointer'
-					}}
-				>
-					Logout
-				</button>
-			</header>
+        <div>
+            <header style={{ background: 'var(--color-card)', boxShadow: 'var(--shadow-1)' }}>
+                <div className="container" style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <div className="h1" style={{ margin: 0 }}>Good day, {user?.full_name || user?.email}</div>
+                        <div className="muted">We’re here with you. Every step counts.</div>
+                    </div>
+                    <button className="btn btn-danger" onClick={logout}>Logout</button>
+                </div>
+            </header>
 
-			<div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+            <div className="container" style={{ padding: '24px 0' }}>
 				{/* Exercise Session */}
 				{exerciseSession.isActive && (
-					<div style={{
-						backgroundColor: '#27ae60',
-						color: 'white',
-						padding: '20px',
-						borderRadius: '10px',
-						marginBottom: '20px',
-						textAlign: 'center'
-					}}>
+                    <div className="card" style={{ background: 'var(--green)', color: 'white', textAlign: 'center' }}>
 						<h2 style={{ margin: '0 0 10px 0' }}>Exercise in Progress: {exerciseSession.currentExercise}</h2>
 						<div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '15px' }}>
 							<div>
@@ -279,45 +239,13 @@ const PatientDashboard: React.FC = () => {
 							<strong>AI Feedback:</strong> {exerciseSession.aiFeedback}
 						</div>
 						<div>
-							<button 
-								onClick={completeRep}
-								style={{
-									backgroundColor: '#3498db',
-									color: 'white',
-									border: 'none',
-									padding: '10px 20px',
-									borderRadius: '5px',
-									marginRight: '10px',
-									cursor: 'pointer'
-								}}
-							>
+                            <button className="btn btn-primary" onClick={completeRep}>
 								Complete Rep
 							</button>
-							<button 
-								onClick={completeSet}
-								style={{
-									backgroundColor: '#9b59b6',
-									color: 'white',
-									border: 'none',
-									padding: '10px 20px',
-									borderRadius: '5px',
-									marginRight: '10px',
-									cursor: 'pointer'
-								}}
-							>
+                            <button className="btn btn-secondary" onClick={completeSet}>
 								Complete Set
 							</button>
-							<button 
-								onClick={stopExercise}
-								style={{
-									backgroundColor: '#e74c3c',
-									color: 'white',
-									border: 'none',
-									padding: '10px 20px',
-									borderRadius: '5px',
-									cursor: 'pointer'
-								}}
-							>
+                            <button className="btn btn-danger" onClick={stopExercise}>
 								Stop Exercise
 							</button>
 						</div>
@@ -325,61 +253,34 @@ const PatientDashboard: React.FC = () => {
 				)}
 
 				{/* Main Content Grid */}
-				<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div className="grid-2">
 					{/* Assigned Exercises */}
-					<div style={{
-						backgroundColor: 'white',
-						padding: '20px',
-						borderRadius: '10px',
-						boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-					}}>
-						<h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Your Exercises</h2>
+                    <div className="card">
+                        <div className="h2">Your Exercises</div>
 						{exercises.length === 0 ? (
-							<p style={{ color: '#7f8c8d', textAlign: 'center' }}>No exercises assigned yet</p>
+                            <p className="muted" style={{ textAlign: 'center' }}>No exercises assigned yet</p>
 						) : (
-							<div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <div className="grid">
 								{exercises.map((exercise) => (
-									<div key={exercise.id} style={{
-										border: '1px solid #ecf0f1',
-										borderRadius: '8px',
-										padding: '15px',
-										backgroundColor: '#f8f9fa'
-									}}>
-										<h3 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>
+                                    <div key={exercise.id} className="card">
+                                        <h3 style={{ margin: '0 0 10px 0' }}>
 											{exercise.exercise.name}
 										</h3>
-										<p style={{ margin: '0 0 10px 0', color: '#7f8c8d' }}>
+                                        <p className="muted" style={{ margin: '0 0 10px 0' }}>
 											{exercise.exercise.description}
 										</p>
 										<div style={{ marginBottom: '10px' }}>
-											<strong>Target:</strong> {exercise.reps} reps × {exercise.sets} sets
+                                            <span className="badge badge-green">{exercise.reps} reps × {exercise.sets} sets</span>
 										</div>
 										<div style={{ marginBottom: '15px' }}>
 											<strong>Instructions:</strong> {exercise.instructions}
 										</div>
 										<div style={{ marginBottom: '15px' }}>
 											<strong>Status:</strong> 
-											<span style={{ 
-												color: exercise.status === 'completed' ? '#27ae60' : 
-													   exercise.status === 'in_progress' ? '#f39c12' : '#7f8c8d',
-												marginLeft: '5px'
-											}}>
-												{exercise.status}
-											</span>
+                                            <span className={exercise.status === 'completed' ? 'badge badge-green' : exercise.status === 'in_progress' ? 'badge badge-amber' : 'badge badge-blue'} style={{ marginLeft: 6 }}>{exercise.status}</span>
 										</div>
 										{!exerciseSession.isActive && (
-											<button 
-												onClick={() => startExercise(exercise)}
-												style={{
-													backgroundColor: '#27ae60',
-													color: 'white',
-													border: 'none',
-													padding: '10px 20px',
-													borderRadius: '5px',
-													cursor: 'pointer',
-													width: '100%'
-												}}
-											>
+                                            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => startExercise(exercise)}>
 												Start Exercise
 											</button>
 										)}
@@ -390,13 +291,8 @@ const PatientDashboard: React.FC = () => {
 					</div>
 
 					{/* Camera and AI Analysis */}
-					<div style={{
-						backgroundColor: 'white',
-						padding: '20px',
-						borderRadius: '10px',
-						boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-					}}>
-						<h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Exercise Analysis</h2>
+                    <div className="card">
+                        <div className="h2" style={{ marginBottom: 20 }}>Exercise Analysis</div>
 						
 						{/* Camera Feed */}
 						<div style={{ 
@@ -434,62 +330,27 @@ const PatientDashboard: React.FC = () => {
 						<canvas ref={canvasRef} style={{ display: 'none' }} />
 						
 						{/* Controls */}
-						<div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
 							{!cameraActive ? (
-								<button 
-									onClick={startCamera}
-									style={{
-										backgroundColor: '#3498db',
-										color: 'white',
-										border: 'none',
-										padding: '10px 20px',
-										borderRadius: '5px',
-										cursor: 'pointer'
-									}}
-								>
+                                <button className="btn btn-primary" onClick={startCamera}>
 									Start Camera
 								</button>
 							) : (
-								<button 
-									onClick={stopCamera}
-									style={{
-										backgroundColor: '#e74c3c',
-										color: 'white',
-										border: 'none',
-										padding: '10px 20px',
-										borderRadius: '5px',
-										cursor: 'pointer'
-									}}
-								>
+                                <button className="btn btn-danger" onClick={stopCamera}>
 									Stop Camera
 								</button>
 							)}
 							
 							{cameraActive && !ws && (
-								<button 
-									onClick={startRealtime}
-									style={{
-										backgroundColor: '#9b59b6',
-										color: 'white',
-										border: 'none',
-										padding: '10px 20px',
-										borderRadius: '5px',
-										cursor: 'pointer'
-									}}
-								>
+                                <button className="btn btn-secondary" onClick={startRealtime}>
 									Start AI Analysis
 								</button>
 							)}
 						</div>
 
 						{/* AI Feedback */}
-						<div style={{
-							backgroundColor: '#ecf0f1',
-							padding: '15px',
-							borderRadius: '8px',
-							marginBottom: '20px'
-						}}>
-							<h3 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>AI Analysis</h3>
+                        <div className="card" style={{ background: 'var(--sky)' }}>
+                            <h3 style={{ margin: '0 0 10px 0' }}>AI Analysis</h3>
 							<div>
 								<strong>Detected Exercise:</strong> {realtime.label || 'None'}
 							</div>
@@ -516,9 +377,9 @@ const PatientDashboard: React.FC = () => {
 								<div style={{ color: '#7f8c8d' }}>No score available yet</div>
 							)}
 						</div>
-					</div>
-				</div>
-			</div>
+                    </div>
+                </div>
+            </div>
 		</div>
 	);
 };

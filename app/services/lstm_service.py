@@ -22,17 +22,32 @@ class NormalizationLayer(tf.keras.layers.Layer):
         return config
 
 
-def _poses_to_array(poses: List[List[Dict]]) -> np.ndarray:
-	# poses: list of frames; each frame is list of keypoint dicts with x,y,score
-	# Convert to shape (timesteps, 34) - only x,y coordinates (17*2=34)
-	frames = []
-	for frame in poses:
-		flat = []
-		for kp in frame:
-			# Only use x,y coordinates, skip score to get 34 features
-			flat.extend([kp.get("x", 0.0), kp.get("y", 0.0)])
-		frames.append(flat)
-	return np.array(frames, dtype=np.float32)
+def _poses_to_array(poses: List[List[Dict]], target_features: int = 34) -> np.ndarray:
+    # Convert a list of frames (each a list of keypoints dicts) to shape (timesteps, 34)
+    # Always return exactly 34 features (x,y for 17 points): trim or pad as needed.
+    frames: List[List[float]] = []
+    for frame in poses:
+        flat: List[float] = []
+        if target_features == 51:
+            for kp in frame:
+                x = float(kp.get("x", 0.0))
+                y = float(kp.get("y", 0.0))
+                s = float(kp.get("score", 0.0))
+                flat.extend([x, y, s])
+        else:
+            for kp in frame:
+                x = float(kp.get("x", 0.0))
+                y = float(kp.get("y", 0.0))
+                flat.extend([x, y])
+        # Ensure exact feature length
+        if len(flat) > target_features:
+            flat = flat[:target_features]
+        elif len(flat) < target_features:
+            flat.extend([0.0] * (target_features - len(flat)))
+        frames.append(flat)
+    if not frames:
+        frames.append([0.0] * target_features)
+    return np.asarray(frames, dtype=np.float32)
 
 
 class LSTMClassifier:
@@ -46,6 +61,7 @@ class LSTMClassifier:
 			self._load_real_model()
 		except Exception as e:
 			print(f"[LSTM] Could not load real model, using mock: {e}")
+		self.expected_features = 34
 	
 	def _load_real_model(self):
 		"""Try to load the real model - can be called later"""
@@ -67,8 +83,22 @@ class LSTMClassifier:
 			print("[LSTM] Attempting to load real model...")
 			custom_objects = {'NormalizationLayer': NormalizationLayer}
 			try:
-				self.model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+				self.model = tf.keras.models.load_model(
+					model_path,
+					custom_objects=custom_objects,
+					compile=False,
+					safe_mode=False,
+				)
 				print("[LSTM] Real model loaded successfully!")
+				# Infer expected feature size from model input
+				try:
+					shape = self.model.input_shape
+					print(f"[LSTM] Model input_shape: {shape}")
+					if isinstance(shape, (list, tuple)):
+						self.expected_features = int(shape[-1]) if shape[-1] else 34
+					print(f"[LSTM] Using expected_features={self.expected_features}")
+				except Exception:
+					self.expected_features = 34
 			except Exception as e:
 				print(f"[LSTM] Failed to load real model: {e}")
 				raise
@@ -81,7 +111,7 @@ class LSTMClassifier:
 			confidence = random.uniform(0.6, 0.95)
 			return label, confidence, [0.2, 0.2, 0.2, 0.2, 0.2]
 		
-		arr = _poses_to_array(poses)
+		arr = _poses_to_array(poses, target_features=getattr(self, 'expected_features', 34))
 		arr = np.expand_dims(arr, axis=0)  # (1, timesteps, features)
 		probs = self.model.predict(arr, verbose=0)[0]  # assume (timesteps or 1, num_classes)
 		if probs.ndim == 2:  # if returns per-timestep, take mean
@@ -104,7 +134,7 @@ class LSTMClassifier:
 				})
 			return preds
 		
-		arr = _poses_to_array(poses)
+		arr = _poses_to_array(poses, target_features=getattr(self, 'expected_features', 34))
 		arr = np.expand_dims(arr, axis=0)
 		probs = self.model.predict(arr, verbose=0)
 		if probs.ndim == 3:

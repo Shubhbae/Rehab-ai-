@@ -17,6 +17,11 @@ movenet = MoveNetService()
 lstm = LSTMClassifier()
 
 
+@router.get("/labels")
+async def get_labels():
+	return {"labels": LABELS}
+
+
 @router.post("/video", response_model=ClassificationSummary)
 async def classify_video(
 	file: UploadFile = File(...),
@@ -68,4 +73,35 @@ async def classify_video(
 		exercise_name=exercise_name,
 		predicted_counts=counts,
 	)
+
+
+@router.post("/video/detect")
+async def classify_video_detect(
+	file: UploadFile = File(...),
+	user = Depends(get_current_user),
+):
+	try:
+		if user.role not in ("patient", "doctor"):
+			raise HTTPException(status_code=403, detail="Unauthorized role")
+
+		# Save upload temporarily
+		filename = f"{user.id}_detect_{file.filename}"
+		video_path = os.path.join(settings.media_dir, filename)
+		with open(video_path, "wb") as f:
+			f.write(await file.read())
+
+		# Process video and predict overall exercise
+		poses = movenet.process_video(video_path)
+		label, confidence, _ = lstm.predict_sequence(poses)
+
+		# Keep API label exactly as produced by model; message is human-friendly
+		message = f"Detected exercise: {label.replace('_', ' ').title()}"
+		return {
+			"success": True,
+			"exercise": label,
+			"confidence": confidence,
+			"message": message,
+		}
+	except Exception as e:
+		return {"success": False, "error": str(e)}
 

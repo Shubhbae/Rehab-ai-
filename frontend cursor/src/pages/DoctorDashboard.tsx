@@ -36,17 +36,27 @@ const DoctorDashboard: React.FC = () => {
 		})();
 	}, [selectedId]);
 
-	if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
-	if (error) return <div style={{ padding: 24, color: 'red' }}>{error}</div>;
+if (loading) return <div className="container" style={{ padding: '48px 0' }}><div className="card">Loading…</div></div>;
+if (error) return <div className="container" style={{ padding: '48px 0' }}><div className="card" style={{ borderLeft: '6px solid var(--red)' }}>{error}</div></div>;
 
 	const chartData = analytics ? Object.entries(analytics.label_distribution).map(([label, count]) => ({ label, count })) : [];
 
-	return (
-		<div style={{ padding: 24, display: 'grid', gap: 24 }}>
-			<h2>Doctor Dashboard — {user?.email}</h2>
-			<section>
-				<h3>Patients</h3>
-				<select value={selectedId ?? ''} onChange={(e) => setSelectedId(Number(e.target.value))}>
+return (
+		<div className="container" style={{ padding: '24px 0', display: 'grid', gap: 24 }}>
+			<div className="h1">Doctor Dashboard — {user?.email}</div>
+			<section className="card">
+				<div className="h2">Patient Roster (MSD)</div>
+				<ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+					<li style={{ padding: 8 }}><strong>TUSHAR SHAHRIYA</strong> — Lumbar strain (LBP)</li>
+					<li style={{ padding: 8 }}><strong>SHUBH GAUTAM</strong> — Cervical spondylosis</li>
+					<li style={{ padding: 8 }}><strong>KAJAL KUKREJA</strong> — Patellofemoral pain</li>
+					<li style={{ padding: 8 }}><strong>ABHAY TIWARI</strong> — Rotator cuff tendinopathy</li>
+					<li style={{ padding: 8 }}><strong>RIJUL BANSAL</strong> — Ankle sprain rehab</li>
+				</ul>
+			</section>
+			<section className="card">
+				<div className="h2">Patients</div>
+				<select className="input" value={selectedId ?? ''} onChange={(e) => setSelectedId(Number(e.target.value))}>
 					<option value="" disabled>Select patient</option>
 					{patients.map((p) => (
 						<option key={p.id} value={p.id}>{p.full_name ?? p.email}</option>
@@ -54,8 +64,8 @@ const DoctorDashboard: React.FC = () => {
 				</select>
 			</section>
 			{analytics && (
-				<section>
-					<h3>Progress analytics</h3>
+				<section className="card">
+					<div className="h2">Progress analytics</div>
 					<div style={{ width: '100%', height: 300 }}>
 						<ResponsiveContainer>
 							<BarChart data={chartData}>

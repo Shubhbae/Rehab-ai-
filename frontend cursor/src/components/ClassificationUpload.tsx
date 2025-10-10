@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
 
 const ClassificationUpload: React.FC = () => {
 	const [file, setFile] = useState<File | null>(null);
-	const [exercise, setExercise] = useState('squat');
+	const [exercise, setExercise] = useState('');
+	const [labels, setLabels] = useState<string[]>([]);
 	const [result, setResult] = useState<any | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		(async () => {
+			try {
+				const { data } = await api.get('/classify/labels');
+				setLabels(data.labels || []);
+				if ((data.labels || []).length > 0) setExercise(data.labels[0]);
+			} catch (e: any) {
+				setError(e?.response?.data?.detail ?? 'Failed to load labels');
+			}
+		})();
+	}, []);
 
 	const onUpload = async () => {
 		if (!file) return;
@@ -29,9 +42,9 @@ const ClassificationUpload: React.FC = () => {
 		<div style={{ display: 'grid', gap: 8 }}>
 			<h4>Upload Video for AI Classification</h4>
 			<select value={exercise} onChange={(e) => setExercise(e.target.value)}>
-				<option value="squat">Squat</option>
-				<option value="step_jack">Step Jack</option>
-				<option value="half_wheel">Half Wheel</option>
+				{labels.map((l) => (
+					<option key={l} value={l}>{l.replace('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
+				))}
 			</select>
 			<input type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
 			<button disabled={!file || loading} onClick={onUpload}>{loading ? 'Uploading…' : 'Upload'}</button>
