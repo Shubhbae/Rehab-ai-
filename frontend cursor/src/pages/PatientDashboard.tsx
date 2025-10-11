@@ -40,12 +40,15 @@ const PatientDashboard: React.FC = () => {
 	const videoRef = useRef<HTMLVideoElement | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const [ws, setWs] = useState<WebSocket | null>(null);
-	const [realtime, setRealtime] = useState<{ label?: string; confidence?: number }>({});
+	const [realtime, setRealtime] = useState<{ label?: string; confidence?: number; keypoints?: any[] }>({});
 	const [cameraActive, setCameraActive] = useState(false);
+	const [aiAnalysisActive, setAiAnalysisActive] = useState(false);
+	const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
+	const lastKpsRef = useRef<any[]>([]);
 
 	const wsUrl = useMemo(() => {
-		const base = (import.meta.env.VITE_API_WS_URL as string) ?? 'ws://127.0.0.1:8000/realtime/ws';
-		return base;
+		const base = (import.meta.env.VITE_API_WS_URL as string) ?? 'ws://127.0.0.1:8000';
+		return `${base}/realtime/ws`;
 	}, []);
 
 	useEffect(() => {
@@ -67,14 +70,19 @@ const PatientDashboard: React.FC = () => {
 
 	const startCamera = async () => {
 		try {
+			console.log('Requesting camera access...');
 			const stream = await navigator.mediaDevices.getUserMedia({ 
 				video: { width: 640, height: 480 }, 
 				audio: false 
 			});
-		if (videoRef.current) {
-			videoRef.current.srcObject = stream;
-			await videoRef.current.play();
+			console.log('Camera stream obtained:', stream);
+			if (videoRef.current) {
+				videoRef.current.srcObject = stream;
+				await videoRef.current.play();
+				console.log('Video element playing, camera active');
 				setCameraActive(true);
+			} else {
+				console.error('Video ref is null');
 			}
 		} catch (err) {
 			console.error('Error accessing camera:', err);
@@ -96,7 +104,8 @@ const PatientDashboard: React.FC = () => {
 		setRealtime({});
 	};
 
-	const startExercise = (exercise: AssignedExercise) => {
+	const startExercise = async (exercise: AssignedExercise) => {
+		console.log('Starting exercise:', exercise.exercise.name);
 		setExerciseSession({
 			isActive: true,
 			currentExercise: exercise.exercise.name,
@@ -105,10 +114,19 @@ const PatientDashboard: React.FC = () => {
 			aiFeedback: 'Starting exercise...',
 			confidence: 0
 		});
-		startCamera();
+		
+		// Start camera first
+		await startCamera();
+		
+		// Wait a moment for camera to initialize, then start AI analysis
+		setTimeout(() => {
+			console.log('Starting AI analysis for exercise...');
+			startRealtime();
+		}, 1000);
 	};
 
 	const stopExercise = () => {
+		console.log('Stopping exercise...');
 		setExerciseSession({
 			isActive: false,
 			currentExercise: null,
@@ -117,30 +135,81 @@ const PatientDashboard: React.FC = () => {
 			aiFeedback: '',
 			confidence: 0
 		});
+		
+		// Stop AI analysis first
+		if (ws) {
+			ws.close();
+			setWs(null);
+		}
+		setAiAnalysisActive(false);
+		setConnectionStatus('disconnected');
+		setRealtime({});
+		
+		// Then stop camera
 		stopCamera();
 	};
 
 	const startRealtime = () => {
-		if (!videoRef.current || !canvasRef.current) return;
+		if (!videoRef.current || !canvasRef.current) {
+			console.error('Video or canvas ref not available');
+			return;
+		}
+		
+		console.log('Starting AI Analysis...');
+		console.log('WebSocket URL:', wsUrl);
+		setAiAnalysisActive(true);
+		setConnectionStatus('connecting');
 		
 		const socket = new WebSocket(wsUrl);
 		setWs(socket);
 		
 		socket.onopen = () => {
-			console.log('WebSocket connected');
+			console.log('WebSocket connected - AI Analysis started!');
+			setConnectionStatus('connected');
 		};
 		
 		socket.onmessage = (ev) => {
 			try {
 				const data = JSON.parse(ev.data);
+				console.log('WebSocket message received:', data);
+				
+				// Store keypoints for skeleton drawing
+				if (data.keypoints) {
+					console.log(`Received ${data.keypoints.length} keypoints for skeleton drawing`);
+					lastKpsRef.current = data.keypoints;
+					setRealtime(prev => ({ ...prev, keypoints: data.keypoints }));
+				}
+				
+				// Handle prediction results
 				if (data.label) {
-					setRealtime({ label: data.label, confidence: data.confidence });
+					console.log(`AI Prediction: ${data.label} (${data.confidence})`);
+					setRealtime(prev => ({ 
+						...prev, 
+						label: data.label, 
+						confidence: data.confidence 
+					}));
 					
 					// Update exercise session with AI feedback
 					if (exerciseSession.isActive) {
+						const exerciseName = data.label.replace('_', ' ').toUpperCase();
+						const confidencePercent = data.confidence ? (data.confidence * 100).toFixed(1) : '0';
+						
+						let feedback = `Detected: ${exerciseName} (${confidencePercent}% confidence)`;
+						
+						// Add specific feedback based on confidence
+						if (data.confidence && data.confidence > 0.8) {
+							feedback += ' - Excellent form!';
+						} else if (data.confidence && data.confidence > 0.6) {
+							feedback += ' - Good form!';
+						} else if (data.confidence && data.confidence > 0.4) {
+							feedback += ' - Keep practicing!';
+						} else {
+							feedback += ' - Try to get in position';
+						}
+						
 						setExerciseSession(prev => ({
 							...prev,
-							aiFeedback: `Detected: ${data.label}`,
+							aiFeedback: feedback,
 							confidence: data.confidence || 0
 						}));
 					}
@@ -152,21 +221,69 @@ const PatientDashboard: React.FC = () => {
 		
 		socket.onerror = (error) => {
 			console.error('WebSocket error:', error);
+			setConnectionStatus('error');
 		};
 		
 		socket.onclose = () => {
 			console.log('WebSocket disconnected');
+			setConnectionStatus('disconnected');
+			setAiAnalysisActive(false);
 		};
 		
 		const ctx = canvasRef.current.getContext('2d')!;
 		const tick = () => {
-			if (!videoRef.current || socket.readyState !== 1) return;
+			if (!videoRef.current || socket.readyState !== 1) {
+				console.log('Tick skipped - video or socket not ready');
+				return;
+			}
+			console.log('Tick running - processing frame');
 			
 			const w = videoRef.current.videoWidth;
 			const h = videoRef.current.videoHeight;
 			canvasRef.current!.width = w;
 			canvasRef.current!.height = h;
 			ctx.drawImage(videoRef.current, 0, 0, w, h);
+			
+			// Draw skeleton overlay if keypoints are available
+			const kps = lastKpsRef.current;
+			if (kps && Array.isArray(kps) && kps.length === 17) {
+				console.log('Drawing skeleton with', kps.length, 'keypoints');
+				// Define skeleton connections (bone structure)
+				const edges: Array<[number, number]> = [
+					[0,1],[0,2],[1,3],[2,4], // Head
+					[5,6],[5,7],[7,9],[6,8],[8,10], // Torso & Arms
+					[11,12],[5,11],[6,12],[11,13],[13,15],[12,14],[14,16] // Legs
+				];
+				
+				ctx.save();
+				ctx.lineWidth = 4;
+				ctx.strokeStyle = '#2563eb'; // Blue for bones
+				ctx.fillStyle = '#22c55e'; // Green for joints
+				ctx.shadowColor = 'rgba(0,0,0,0.5)';
+				ctx.shadowBlur = 2;
+				
+				// Draw bones (connections)
+				for (const [a,b] of edges) {
+					const ka = kps[a];
+					const kb = kps[b];
+					if (ka && kb && ka.score > 0.2 && kb.score > 0.2) { // Only draw if confidence is high enough
+						ctx.beginPath();
+						ctx.moveTo(ka.x * w, ka.y * h);
+						ctx.lineTo(kb.x * w, kb.y * h);
+						ctx.stroke();
+					}
+				}
+				
+				// Draw joints (keypoints)
+				for (const kp of kps) {
+					if (kp.score > 0.2) { // Only draw if confidence is high enough
+						ctx.beginPath();
+						ctx.arc(kp.x * w, kp.y * h, 6, 0, Math.PI * 2);
+						ctx.fill();
+					}
+				}
+				ctx.restore();
+			}
 			
 			const dataUrl = canvasRef.current!.toDataURL('image/jpeg', 0.5);
 			socket.send(JSON.stringify({ image_b64: dataUrl }));
@@ -238,6 +355,23 @@ const PatientDashboard: React.FC = () => {
 						<div style={{ marginBottom: '15px' }}>
 							<strong>AI Feedback:</strong> {exerciseSession.aiFeedback}
 						</div>
+						{realtime.label && (
+							<div style={{ marginBottom: '15px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '8px' }}>
+								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+									<div>
+										<strong>Detected Exercise:</strong> {realtime.label.replace('_', ' ').toUpperCase()}
+									</div>
+									<div>
+										<strong>Accuracy:</strong> {realtime.confidence ? (realtime.confidence * 100).toFixed(1) + '%' : 'N/A'}
+									</div>
+								</div>
+								{realtime.keypoints && (
+									<div style={{ marginTop: '5px', fontSize: '14px' }}>
+										<strong>Keypoints Detected:</strong> {realtime.keypoints.length}/17
+									</div>
+								)}
+							</div>
+						)}
 						<div>
                             <button className="btn btn-primary" onClick={completeRep}>
 								Complete Rep
@@ -292,7 +426,19 @@ const PatientDashboard: React.FC = () => {
 
 					{/* Camera and AI Analysis */}
                     <div className="card">
-                        <div className="h2" style={{ marginBottom: 20 }}>Exercise Analysis</div>
+                        <div className="h2" style={{ marginBottom: 20 }}>
+							Exercise Analysis
+							{aiAnalysisActive && (
+								<span style={{ 
+									marginLeft: '10px', 
+									fontSize: '16px', 
+									color: '#22c55e',
+									animation: 'pulse 2s infinite'
+								}}>
+									🟢 LIVE
+								</span>
+							)}
+						</div>
 						
 						{/* Camera Feed */}
 						<div style={{ 
@@ -312,6 +458,18 @@ const PatientDashboard: React.FC = () => {
 								muted 
 								playsInline 
 							/>
+							<canvas 
+								ref={canvasRef} 
+								style={{ 
+									position: 'absolute',
+									top: 0,
+									left: 0,
+									width: '100%',
+									height: '100%',
+									pointerEvents: 'none',
+									zIndex: 1
+								}} 
+							/>
 							{!cameraActive && (
 								<div style={{
 									position: 'absolute',
@@ -319,7 +477,8 @@ const PatientDashboard: React.FC = () => {
 									left: '50%',
 									transform: 'translate(-50%, -50%)',
 									color: 'white',
-									textAlign: 'center'
+									textAlign: 'center',
+									zIndex: 2
 								}}>
 									<div style={{ fontSize: '48px', marginBottom: '10px' }}>📹</div>
 									<div>Camera not active</div>
@@ -327,36 +486,103 @@ const PatientDashboard: React.FC = () => {
 							)}
 						</div>
 						
-						<canvas ref={canvasRef} style={{ display: 'none' }} />
-						
 						{/* Controls */}
-                        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                        <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
 							{!cameraActive ? (
                                 <button className="btn btn-primary" onClick={startCamera}>
-									Start Camera
+									📹 Start Camera
 								</button>
 							) : (
                                 <button className="btn btn-danger" onClick={stopCamera}>
-									Stop Camera
+									📹 Stop Camera
 								</button>
 							)}
 							
-							{cameraActive && !ws && (
+							{cameraActive && !aiAnalysisActive && (
                                 <button className="btn btn-secondary" onClick={startRealtime}>
-									Start AI Analysis
+									🤖 Start AI Analysis
+								</button>
+							)}
+							
+							{aiAnalysisActive && (
+                                <button className="btn btn-danger" onClick={() => {
+									if (ws) {
+										ws.close();
+										setWs(null);
+									}
+									setAiAnalysisActive(false);
+									setConnectionStatus('disconnected');
+								}}>
+									🤖 Stop AI Analysis
 								</button>
 							)}
 						</div>
+						
+						{/* Connection Status */}
+						{aiAnalysisActive && (
+							<div style={{ 
+								padding: '10px', 
+								borderRadius: '8px', 
+								marginBottom: '20px',
+								backgroundColor: connectionStatus === 'connected' ? '#d5f4e6' : 
+												connectionStatus === 'connecting' ? '#fff3cd' : '#f8d7da',
+								color: connectionStatus === 'connected' ? '#155724' : 
+									   connectionStatus === 'connecting' ? '#856404' : '#721c24'
+							}}>
+								<strong>AI Analysis Status:</strong> {
+									connectionStatus === 'connected' ? '🟢 Connected - Tracking Active' :
+									connectionStatus === 'connecting' ? '🟡 Connecting...' :
+									connectionStatus === 'error' ? '🔴 Connection Error' :
+									'⚪ Disconnected'
+								}
+							</div>
+						)}
 
 						{/* AI Feedback */}
                         <div className="card" style={{ background: 'var(--sky)' }}>
-                            <h3 style={{ margin: '0 0 10px 0' }}>AI Analysis</h3>
-							<div>
-								<strong>Detected Exercise:</strong> {realtime.label || 'None'}
+                            <h3 style={{ margin: '0 0 10px 0' }}>🤖 AI Analysis</h3>
+							<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+								<div>
+									<strong>Detected Exercise:</strong><br/>
+									<span style={{ 
+										fontSize: '18px', 
+										fontWeight: 'bold',
+										color: realtime.label ? '#2563eb' : '#6b7280'
+									}}>
+										{realtime.label ? realtime.label.replace('_', ' ').toUpperCase() : 'None'}
+									</span>
+								</div>
+								<div>
+									<strong>Confidence:</strong><br/>
+									<span style={{ 
+										fontSize: '18px', 
+										fontWeight: 'bold',
+										color: realtime.confidence && realtime.confidence > 0.7 ? '#22c55e' : 
+											   realtime.confidence && realtime.confidence > 0.4 ? '#f59e0b' : '#6b7280'
+									}}>
+										{realtime.confidence ? (realtime.confidence * 100).toFixed(1) + '%' : 'N/A'}
+									</span>
+								</div>
 							</div>
-							<div>
-								<strong>Confidence:</strong> {realtime.confidence ? (realtime.confidence * 100).toFixed(1) + '%' : 'N/A'}
+							<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+								<div>
+									<strong>Keypoints:</strong> {realtime.keypoints ? realtime.keypoints.length : 0} / 17
+								</div>
+								<div>
+									<strong>Status:</strong> {realtime.keypoints && realtime.keypoints.length > 10 ? '🟢 Tracking Active' : '🔴 No Detection'}
+								</div>
 							</div>
+							{aiAnalysisActive && (
+								<div style={{ 
+									marginTop: '10px', 
+									padding: '8px', 
+									backgroundColor: 'rgba(37, 99, 235, 0.1)',
+									borderRadius: '6px',
+									fontSize: '14px'
+								}}>
+									💡 <strong>Tip:</strong> Make sure you're visible in the camera frame for best tracking results!
+								</div>
+							)}
 						</div>
 
 						{/* AI Score */}

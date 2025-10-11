@@ -102,24 +102,9 @@ def create_test_user():
 
 @app.get("/api/camera/test")
 def test_camera():
-	"""Test camera access"""
-	try:
-		cap = cv2.VideoCapture(0)
-		if not cap.isOpened():
-			return {"success": False, "error": "Camera not accessible"}
-		ret, frame = cap.read()
-		if not ret:
-			cap.release()
-			return {"success": False, "error": "Failed to capture frame"}
-		_, buffer = cv2.imencode('.jpg', frame)
-		frame_base64 = base64.b64encode(buffer).decode('utf-8')
-		cap.release()
-		return {
-			"success": True,
-			"message": "Camera accessed successfully",
-			"frame_shape": list(frame.shape),
-			"frame_preview": f"data:image/jpeg;base64,{frame_base64[:100]}..."
-		}
-	except Exception as e:
-		return {"success": False, "error": str(e)}
+	"""Test camera access - removed direct camera access to prevent conflicts"""
+	return {
+		"success": True,
+		"message": "Camera test endpoint available - use frontend for camera access"
+	}
 

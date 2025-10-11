@@ -28,6 +28,11 @@ body {
 	line-height: 1.6;
 }
 
+@keyframes pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.5; }
+}
+
 .container { max-width: 1200px; margin: 0 auto; padding: 0 var(--spacing-2); }
 
 .card {
